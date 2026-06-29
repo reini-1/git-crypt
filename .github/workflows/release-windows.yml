@@ -79,6 +79,6 @@ jobs:
             await github.rest.repos.uploadReleaseAsset({
               owner, repo,
               release_id: ${{ github.event.release.id }},
-              name: 'git-crypt-${{ github.event.release.name }}-x86_64.exe',
+              name: 'git-crypt-${{ github.event.release.tag_name }}-windows-x86_64.exe',
               data: await fs.readFile('git-crypt.exe'),
             });
