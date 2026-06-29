@@ -21,6 +21,7 @@ jobs:
           install: >-
             base-devel
             msys2-devel
+            mingw-w64-ucrt-x86_64-binutils
             mingw-w64-ucrt-x86_64-toolchain
             mingw-w64-ucrt-x86_64-openssl
 
