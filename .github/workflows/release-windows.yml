@@ -35,10 +35,9 @@ jobs:
         shell: msys2 {0}
         run: |
           echo "=== Checking for external DLL dependencies ==="
-          # Check specifically for libcrypto, libssl, libgcc, libstdc++
+          # Check specifically for libcrypto, libssl, libgcc, libstdc++, libwinpthread
           # These should NOT appear in a fully static build
-          objdump -p git-crypt.exe | grep -E "DLL Name:.*(libcrypto|libssl|libgcc|libstdc\\+\\+|libwinpthread)"
-          if [ $? -eq 0 ]; then
+          if objdump -p git-crypt.exe | grep -E "DLL Name:.*(libcrypto|libssl|libgcc|libstdc\+\+|libwinpthread)"; then
             echo "ERROR: External libraries found! Static linking failed."
             exit 1
           else
