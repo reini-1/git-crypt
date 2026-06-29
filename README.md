@@ -15,8 +15,9 @@ git-crypt - transparent file encryption in git
 
 ---
 
-> [!NOTE] narrowin README
-> 
+> [!NOTE]
+>
+> **narrowin README**
 >
 > **See original AGWA README below.**
 >
