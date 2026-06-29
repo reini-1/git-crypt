@@ -1,115 +1,130 @@
-git-crypt - transparent file encryption in git (narrowin fork)
-==============================================================
+git-crypt - transparent file encryption in git
+==============================================
 
-This is a fork of [AGWA/git-crypt](https://github.com/AGWA/git-crypt) that
-includes unmerged upstream pull requests we depend on:
-
-| PR | Description |
-|----|-------------|
-| [#311](https://github.com/AGWA/git-crypt/pull/311) | Fix handling small files (data integrity bug) |
-| [#222](https://github.com/AGWA/git-crypt/pull/222) | Fix multiple worktrees (use common git dir) |
-| [#180](https://github.com/AGWA/git-crypt/pull/180) | Merge driver for secret files |
-| [#210](https://github.com/AGWA/git-crypt/pull/210) | Don't encrypt empty files, including existing repos with old keys |
-| [#332](https://github.com/AGWA/git-crypt/pull/332) | Fix textconv producing empty diffs on Linux |
-
-### Install
-
-Download a binary from [Releases](https://github.com/narrowin/git-crypt/releases):
-
-```sh
-mkdir -p ~/.local/bin
-
-# macOS (Apple Silicon)
-curl -L -o ~/.local/bin/git-crypt https://github.com/narrowin/git-crypt/releases/download/v0.8.0-narrowin/git-crypt-darwin-arm64
-
-# Linux (amd64)
-curl -L -o ~/.local/bin/git-crypt https://github.com/narrowin/git-crypt/releases/download/v0.8.0-narrowin/git-crypt-linux-amd64
-
-chmod +x ~/.local/bin/git-crypt
-~/.local/bin/git-crypt --version
-# git-crypt 0.8.0-narrowin
-```
-
-Or build from source:
-
-```sh
-git clone git@github.com:narrowin/git-crypt.git
-cd git-crypt
-git remote add upstream https://github.com/AGWA/git-crypt.git
-./scripts/build-internal.sh
-# binary is at ./git-crypt
-./git-crypt --version
-```
-
-**Dependencies (build only):** C++ compiler, Make, OpenSSL dev headers, Git.
-The build script checks for these and prints install hints if anything is missing.
-
-### Switching from upstream git-crypt
-
-If you already have repos unlocked with upstream git-crypt, you must clear the
-old filter config before unlocking with this fork. Otherwise `git-crypt unlock`
-will fail with `clean filter 'git-crypt' failed`.
-
-Run this **once per repo** that was previously unlocked with upstream:
-
-```sh
-git-crypt lock                                       # lock first if currently unlocked
-git config --remove-section filter.git-crypt         # remove stale smudge/clean filters
-git config --remove-section diff.git-crypt           # remove stale textconv filter
-git-crypt unlock                                     # unlock with the new binary
-```
-
-After that, lock/unlock works normally.
-
-### Empty encrypted files
-
-This fork stores empty files that match a `git-crypt` filter pattern as true
-0-byte Git blobs. Older git-crypt versions stored those files as 22-byte
-`GITCRYPT` header blobs. The old blobs contain no secret content, but they can
-break `git stash` or `git merge --autostash` with errors such as:
-
-```text
-fatal: stash failed
-```
-
-All users who commit to repositories using this fork should upgrade to this
-binary before making changes.
-
-After upgrading, run:
-
-```sh
-git status
-```
-
-If an empty file under a git-crypt pattern appears modified, stage and commit it
-once:
-
-```sh
-git add path/to/empty-file
-git commit -m "Normalize empty git-crypt file"
-```
-
-No key changes or history rewrites are needed.
-
-If any team member still uses an older git-crypt binary, that binary will
-re-encrypt empty files back into the old 22-byte blob on commit, which can
-cause the same merge failures. Make sure everyone uses this fork's binary.
-
-### Merge driver
-
-To enable the merge driver for encrypted files (PR #180), add `merge=git-crypt`
-to your `.gitattributes`:
-
-```
-secret.* filter=git-crypt diff=git-crypt merge=git-crypt
-```
-
-This lets git merge encrypted files as plaintext instead of failing with
-binary conflicts.
+> [!NOTE]
+>
+> This is a fork of [narrowin/git-crypt](https://github.com/narrowin/git-crypt) that adds an updated
+> Makefile and Github action to build a static binary on Windows.
+> It also uses newer UCRT64 environment.
+>
+> Build can be done as with the original version:
+> ```shell
+> make clean
+> make
+> ```
 
 ---
 
-*Everything below is the upstream README.*
+> [!NOTE] narrowin README
+> 
+>
+> **See original AGWA README below.**
+>
+> This is a fork of [AGWA/git-crypt](https://github.com/AGWA/git-crypt) that includes unmerged
+> upstream pull requests we depend on:
+> 
+> | PR | Description |
+> |----|-------------|
+> | [#311](https://github.com/AGWA/git-crypt/pull/311) | Fix handling small files (data integrity bug) |
+> | [#222](https://github.com/AGWA/git-crypt/pull/222) | Fix multiple worktrees (use common git dir) |
+> | [#180](https://github.com/AGWA/git-crypt/pull/180) | Merge driver for secret files |
+> | [#210](https://github.com/AGWA/git-crypt/pull/210) | Don't encrypt empty files, including existing repos with old keys |
+> | [#332](https://github.com/AGWA/git-crypt/pull/332) | Fix textconv producing empty diffs on Linux |
+> 
+> ### Install
+> 
+> Download a binary from [Releases](https://github.com/narrowin/git-crypt/releases):
+> 
+> ```sh
+> mkdir -p ~/.local/bin
+> 
+> # macOS (Apple Silicon)
+> curl -L -o ~/.local/bin/git-crypt https://github.com/narrowin/git-crypt/releases/download/v0.8.0-narrowin/git-crypt-darwin-arm64
+> 
+> # Linux (amd64)
+> curl -L -o ~/.local/bin/git-crypt https://github.com/narrowin/git-crypt/releases/download/v0.8.0-narrowin/git-crypt-linux-amd64
+> 
+> chmod +x ~/.local/bin/git-crypt
+> ~/.local/bin/git-crypt --version
+> # git-crypt 0.8.0-narrowin
+> ```
+> 
+> Or build from source:
+> 
+> ```sh
+> git clone git@github.com:narrowin/git-crypt.git
+> cd git-crypt
+> git remote add upstream https://github.com/AGWA/git-crypt.git
+> ./scripts/build-internal.sh
+> # binary is at ./git-crypt
+> ./git-crypt --version
+> ```
+> 
+> **Dependencies (build only):** C++ compiler, Make, OpenSSL dev headers, Git.
+> The build script checks for these and prints install hints if anything is missing.
+> 
+> ### Switching from upstream git-crypt
+> 
+> If you already have repos unlocked with upstream git-crypt, you must clear the
+> old filter config before unlocking with this fork. Otherwise `git-crypt unlock`
+> will fail with `clean filter 'git-crypt' failed`.
+> 
+> Run this **once per repo** that was previously unlocked with upstream:
+> 
+> ```sh
+> git-crypt lock                                       # lock first if currently unlocked
+> git config --remove-section filter.git-crypt         # remove stale smudge/clean filters
+> git config --remove-section diff.git-crypt           # remove stale textconv filter
+> git-crypt unlock                                     # unlock with the new binary
+> ```
+> 
+> After that, lock/unlock works normally.
+> 
+> ### Empty encrypted files
+> 
+> This fork stores empty files that match a `git-crypt` filter pattern as true
+> 0-byte Git blobs. Older git-crypt versions stored those files as 22-byte
+> `GITCRYPT` header blobs. The old blobs contain no secret content, but they can
+> break `git stash` or `git merge --autostash` with errors such as:
+> 
+> ```text
+> fatal: stash failed
+> ```
+> 
+> All users who commit to repositories using this fork should upgrade to this
+> binary before making changes.
+> 
+> After upgrading, run:
+> 
+> ```sh
+> git status
+> ```
+> 
+> If an empty file under a git-crypt pattern appears modified, stage and commit it
+> once:
+> 
+> ```sh
+> git add path/to/empty-file
+> git commit -m "Normalize empty git-crypt file"
+> ```
+> 
+> No key changes or history rewrites are needed.
+> 
+> If any team member still uses an older git-crypt binary, that binary will
+> re-encrypt empty files back into the old 22-byte blob on commit, which can
+> cause the same merge failures. Make sure everyone uses this fork's binary.
+> 
+> ### Merge driver
+> 
+> To enable the merge driver for encrypted files (PR #180), add `merge=git-crypt`
+> to your `.gitattributes`:
+> 
+> ```
+> secret.* filter=git-crypt diff=git-crypt merge=git-crypt
+> ```
+> 
+> This lets git merge encrypted files as plaintext instead of failing with
+> binary conflicts.
 
 ---
 

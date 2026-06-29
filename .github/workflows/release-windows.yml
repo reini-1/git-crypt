@@ -2,34 +2,61 @@ on:
   release:
     types: [published]
 name: Build Release Binary (Windows)
+
 jobs:
   build:
-    name: Build Release Binary
-    runs-on: windows-2022
+    name: Build Release Binary (Windows)
+    runs-on: windows-2025
     permissions:
       contents: read
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
-      - name: Setup msys2
+        uses: actions/checkout@v6
+
+      - name: Setup MSYS2
         uses: msys2/setup-msys2@v2
         with:
-          msystem: MINGW64
+          msystem: UCRT64
           update: true
           install: >-
             base-devel
             msys2-devel
-            mingw-w64-x86_64-toolchain
-            mingw-w64-x86_64-openssl
-            openssl-devel
-      - name: Build binary
+            mingw-w64-ucrt-x86_64-toolchain
+            mingw-w64-ucrt-x86_64-openssl
+
+      - name: Build static binary
         shell: msys2 {0}
-        run: make LDFLAGS="-static-libstdc++ -static -lcrypto -lws2_32 -lcrypt32"
+        run: |
+          make clean
+          make LDFLAGS="-static -static-libgcc -static-libstdc++ -Wl,-Bstatic -lssl -lcrypto -lbcrypt -lws2_32 -lcrypt32 -Wl,--gc-sections -Wl,--strip-all" \
+               CXXFLAGS="-static -static-libgcc -static-libstdc++ -D_WIN32_WINNT=0x0600"
+
+      - name: Verify static linking
+        shell: msys2 {0}
+        run: |
+          echo "=== Checking for external DLL dependencies ==="
+          # Check specifically for libcrypto, libssl, libgcc, libstdc++
+          # These should NOT appear in a fully static build
+          objdump -p git-crypt.exe | grep -E "DLL Name:.*(libcrypto|libssl|libgcc|libstdc\\+\\+|libwinpthread)"
+          if [ $? -eq 0 ]; then
+            echo "ERROR: External libraries found! Static linking failed."
+            exit 1
+          else
+            echo "No external libraries found - static linking successful!"
+          fi
+          echo ""
+          echo "=== All DLL dependencies (for reference) ==="
+          objdump -p git-crypt.exe | grep "DLL Name"
+          echo ""
+          echo "=== Binary size ==="
+          ls -lh git-crypt.exe
+
       - name: Upload release artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v6
         with:
           name: git-crypt-artifacts
           path: git-crypt.exe
+
   upload:
     name: Upload Release Binary
     runs-on: ubuntu-latest
@@ -38,11 +65,12 @@ jobs:
       contents: write
     steps:
       - name: Download release artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v6
         with:
           name: git-crypt-artifacts
+
       - name: Upload release asset
-        uses: actions/github-script@v6
+        uses: actions/github-script@v9
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
           script: |
